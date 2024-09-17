@@ -32,7 +32,7 @@ namespace SpeedNotifier
                 i++;
                 spd /= 1000;
             }
-            return $"{spd:F1} {measures[i]}bps";
+            return $"{spd:F1} {measures[Math.Min(Math.Max(i, 0), measures.Length - 1)]}bps";
         }
 
         private void Timer1_Tick(object sender, EventArgs e)
@@ -101,7 +101,7 @@ namespace SpeedNotifier
 
         private void NotifyIcon1_MouseClick(object sender, MouseEventArgs e)
         {
-            Show();
+            WindowState = FormWindowState.Normal;
             ShowInTaskbar = true;
         }
 
@@ -110,8 +110,8 @@ namespace SpeedNotifier
             if(e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
-                ShowInTaskbar = false;
                 WindowState = FormWindowState.Minimized;
+                ShowInTaskbar = false;
             }
         }
 
