@@ -32,36 +32,29 @@ namespace SpeedNotifier
                 i++;
                 spd /= 1000;
             }
-            return $"{spd:F1} {measures[Math.Min(Math.Max(i, 0), measures.Length - 1)]}bps";
+            return $"{spd:F1} {measures[Math.Min(i, measures.Length - 1)]}bps";
         }
 
         private void Timer1_Tick(object sender, EventArgs e)
         {
             var adapter = managementObjectSearcher.Get().Cast<ManagementObject>().FirstOrDefault();
+            bool connected = false;
+            ulong speed = 0;
             if (adapter != null)
             {
                 object spd_raw = adapter["Speed"];
-                if (spd_raw != null)
-                {
-                    var spd = (ulong)spd_raw;
-                    HandleUpdate(new AdapterState(true, true, spd));
-                }
-                else
-                {
-                    notifyIcon1.Text = "Waiting for connection...";
-                }
+                object state_raw = adapter["NetEnabled"];
+                if (spd_raw != null) speed = (ulong)spd_raw;
+                connected = state_raw != null && (bool)state_raw && speed > 0 && speed != long.MaxValue;
             }
-            else
-            {
-                notifyIcon1.Text = "Cannot find adapter.";
-            }
+            HandleUpdate(new AdapterState(adapter != null, connected, speed));
         }
 
         private void HandleUpdate(AdapterState newState)
         {
             if (newState != _lastState)
             {
-                string statusText;
+                string statusText, baloonText = null;
                 Icon statusIcon;
                 bool notify = false;
                 if (!newState.Found) //initial scan, wrong setting, adapter disconnected...
@@ -73,6 +66,8 @@ namespace SpeedNotifier
                 {
                     statusText = "Waiting for connection...";
                     statusIcon = Resources.ConnectedNot;
+                    baloonText = "Disconnected.";
+                    notify = true;
                 }
                 else //connected, speed changed
                 {
@@ -80,13 +75,16 @@ namespace SpeedNotifier
                     var humanSpeed = Convert(newState.Speed);
                     statusText = $"Speed: {humanSpeed}";
                     statusIcon = newState.Speed >= GIGABIT ? Resources.ConnectedGood : Resources.ConnectedBad;
-                    notifyIcon1.BalloonTipText = $"Adapter speed: {humanSpeed}";
+                    baloonText = $"Adapter speed: {humanSpeed}";
                     notify = true;
                 }
                 notifyIcon1.Text = statusText;
                 notifyIcon1.Icon = statusIcon;
-                Icon = statusIcon;
-                if (notify) notifyIcon1.ShowBalloonTip(5000);
+                if (notify)
+                {
+                    notifyIcon1.BalloonTipText = baloonText!;
+                    notifyIcon1.ShowBalloonTip(5000);
+                }
                 Log(statusText);
                 _lastState = newState;
             }
